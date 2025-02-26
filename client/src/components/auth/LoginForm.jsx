@@ -1,4 +1,6 @@
+import axios from "axios";
 import { useState } from "react";
+import toast from "react-hot-toast";
 import { Link, useNavigate } from "react-router";
 
 const LoginForm = () => {
@@ -7,7 +9,6 @@ const LoginForm = () => {
     pin: "",
   });
 
-  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -18,27 +19,35 @@ const LoginForm = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
 
     // Empty validation
     if (!formData.identifier.trim() || !formData.pin.trim()) {
-      setError("All fields are required");
+      toast.error("All fields are required");
       return;
     }
 
-    navigate(`/user`);
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/auth/login`,
+        formData
+      );
+
+      console.log(response.data);
+
+      if (response.data.success) {
+        navigate(`/${response.data.user.accountType}`);
+      } else {
+        toast.error(response.data.message || "Login failed");
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Login failed");
+    }
   };
 
   return (
     <>
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
           <label

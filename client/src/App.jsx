@@ -1,3 +1,4 @@
+import { Toaster } from "react-hot-toast";
 import { Route, BrowserRouter as Router, Routes } from "react-router";
 
 // Layouts
@@ -60,6 +61,7 @@ function App() {
           <Route path="transactions" element={<AdminTransactions />} />
         </Route>
       </Routes>
+      <Toaster position="top-center" />
     </Router>
   );
 }

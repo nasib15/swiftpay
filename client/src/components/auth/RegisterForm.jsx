@@ -1,4 +1,6 @@
+import axios from "axios";
 import { useState } from "react";
+import toast from "react-hot-toast";
 import { Link, useNavigate } from "react-router";
 
 const RegisterForm = () => {
@@ -14,8 +16,6 @@ const RegisterForm = () => {
     accountType: "user",
   });
 
-  const [error, setError] = useState("");
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({
@@ -24,9 +24,8 @@ const RegisterForm = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
 
     // Empty validation
     if (
@@ -37,31 +36,60 @@ const RegisterForm = () => {
       !formData.pin.trim() ||
       !formData.confirmPin.trim()
     ) {
-      setError("All fields are required");
+      toast.error("All fields are required");
       return;
     }
 
     if (formData.pin !== formData.confirmPin) {
-      setError("PINs do not match");
+      toast.error("PINs do not match");
       return;
     }
 
     if (formData.pin.length !== 5) {
-      setError("PIN must be 5 digits");
+      toast.error("PIN must be 5 digits");
       return;
     }
 
-    navigate("/login");
+    if (formData.nid.length !== 13) {
+      toast.error("NID must be 13 digits");
+      return;
+    }
+
+    if (formData.mobile.length !== 11) {
+      toast.error("Mobile number must be 11 digits");
+      return;
+    }
+
+    const userInfo = {
+      name: formData.name,
+      mobile: formData.mobile,
+      email: formData.email,
+      nid: formData.nid,
+      pin: formData.pin,
+      accountType: formData.accountType,
+    };
+
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/auth/register`,
+        userInfo
+      );
+
+      if (response.data.success) {
+        navigate("/login");
+      } else {
+        toast.error(response.data.message || "Registration failed");
+      }
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message ||
+          "Registration failed. Please try again."
+      );
+    }
   };
 
   return (
     <>
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
           <label
@@ -128,7 +156,7 @@ const RegisterForm = () => {
             className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
             id="nid"
             name="nid"
-            type="text"
+            type="number"
             placeholder="Enter your NID number"
             value={formData.nid}
             onChange={handleChange}
