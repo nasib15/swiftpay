@@ -1,6 +1,8 @@
 /* eslint-disable react/prop-types */
-import { useState } from "react";
+import { useContext, useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import { Link, Outlet, useLocation, useNavigate } from "react-router";
+import { AuthContext } from "../contexts/AuthContext";
 
 // User navigation items
 const userNavigation = [
@@ -30,6 +32,21 @@ const DashboardLayout = ({ userType }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout, isAuthenticated, loading } = useContext(AuthContext);
+
+  // Check if user is authenticated and has the correct account type
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      toast.error("Please login to access this page");
+      navigate("/login");
+      return;
+    }
+
+    if (!loading && isAuthenticated && user && user.accountType !== userType) {
+      toast.error(`You don't have access to ${userType} dashboard`);
+      navigate(`/${user.accountType}`);
+    }
+  }, [isAuthenticated, loading, navigate, user, userType]);
 
   // Navigation based on user type
   const navigation =
@@ -44,8 +61,21 @@ const DashboardLayout = ({ userType }) => {
     userType === "admin" ? "Admin" : userType === "agent" ? "Agent" : "User";
 
   const handleLogout = () => {
+    logout();
     navigate("/login");
   };
+
+  // If still loading or not authenticated, show loading
+  if (loading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -200,7 +230,9 @@ const DashboardLayout = ({ userType }) => {
                 <button className="flex items-center max-w-xs text-sm rounded-full focus:outline-none">
                   <span className="sr-only">Open user menu</span>
                   <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white">
-                    {userTypeDisplay.charAt(0)}
+                    {user && user.name
+                      ? user.name.charAt(0)
+                      : userTypeDisplay.charAt(0)}
                   </div>
                 </button>
               </div>

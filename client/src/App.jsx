@@ -1,5 +1,6 @@
 import { Toaster } from "react-hot-toast";
-import { Route, BrowserRouter as Router, Routes } from "react-router";
+import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router";
+import { AuthProvider } from "./contexts/AuthContext";
 
 // Layouts
 import AuthLayout from "./layouts/AuthLayout";
@@ -29,40 +30,45 @@ import UserManagement from "./pages/admin/UserManagement";
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        {/* Auth */}
-        <Route element={<AuthLayout />}>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-        </Route>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          {/* Root route - redirect to login */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
 
-        {/* User */}
-        <Route path="/user" element={<DashboardLayout userType="user" />}>
-          <Route index element={<UserDashboard />} />
-          <Route path="send-money" element={<SendMoney />} />
-          <Route path="cash-out" element={<CashOut />} />
-          <Route path="transactions" element={<Transactions />} />
-        </Route>
+          {/* Auth */}
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+          </Route>
 
-        {/* Agent */}
-        <Route path="/agent" element={<DashboardLayout userType="agent" />}>
-          <Route index element={<AgentDashboard />} />
-          <Route path="cash-in" element={<CashIn />} />
-          <Route path="balance-request" element={<BalanceRequest />} />
-          <Route path="transactions" element={<AgentTransactions />} />
-        </Route>
+          {/* User */}
+          <Route path="/user" element={<DashboardLayout userType="user" />}>
+            <Route index element={<UserDashboard />} />
+            <Route path="send-money" element={<SendMoney />} />
+            <Route path="cash-out" element={<CashOut />} />
+            <Route path="transactions" element={<Transactions />} />
+          </Route>
 
-        {/* Admin */}
-        <Route path="/admin" element={<DashboardLayout userType="admin" />}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="user-management" element={<UserManagement />} />
-          <Route path="agent-approval" element={<AgentApproval />} />
-          <Route path="transactions" element={<AdminTransactions />} />
-        </Route>
-      </Routes>
-      <Toaster position="top-center" />
-    </Router>
+          {/* Agent */}
+          <Route path="/agent" element={<DashboardLayout userType="agent" />}>
+            <Route index element={<AgentDashboard />} />
+            <Route path="cash-in" element={<CashIn />} />
+            <Route path="balance-request" element={<BalanceRequest />} />
+            <Route path="transactions" element={<AgentTransactions />} />
+          </Route>
+
+          {/* Admin */}
+          <Route path="/admin" element={<DashboardLayout userType="admin" />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="user-management" element={<UserManagement />} />
+            <Route path="agent-approval" element={<AgentApproval />} />
+            <Route path="transactions" element={<AdminTransactions />} />
+          </Route>
+        </Routes>
+        <Toaster position="top-center" />
+      </Router>
+    </AuthProvider>
   );
 }
 

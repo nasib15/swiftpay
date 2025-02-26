@@ -1,10 +1,12 @@
-import axios from "axios";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import toast from "react-hot-toast";
 import { Link, useNavigate } from "react-router";
+import { AuthContext } from "../../contexts/AuthContext";
 
 const RegisterForm = () => {
   const navigate = useNavigate();
+  const { register } = useContext(AuthContext);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -26,6 +28,7 @@ const RegisterForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
 
     // Empty validation
     if (
@@ -37,26 +40,31 @@ const RegisterForm = () => {
       !formData.confirmPin.trim()
     ) {
       toast.error("All fields are required");
+      setIsLoading(false);
       return;
     }
 
     if (formData.pin !== formData.confirmPin) {
       toast.error("PINs do not match");
+      setIsLoading(false);
       return;
     }
 
     if (formData.pin.length !== 5) {
       toast.error("PIN must be 5 digits");
+      setIsLoading(false);
       return;
     }
 
     if (formData.nid.length !== 13) {
       toast.error("NID must be 13 digits");
+      setIsLoading(false);
       return;
     }
 
     if (formData.mobile.length !== 11) {
       toast.error("Mobile number must be 11 digits");
+      setIsLoading(false);
       return;
     }
 
@@ -70,21 +78,15 @@ const RegisterForm = () => {
     };
 
     try {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/auth/register`,
-        userInfo
-      );
+      const result = await register(userInfo);
 
-      if (response.data.success) {
-        navigate("/login");
-      } else {
-        toast.error(response.data.message || "Registration failed");
+      if (result.success) {
+        navigate(`/login`);
       }
     } catch (error) {
-      toast.error(
-        error.response?.data?.message ||
-          "Registration failed. Please try again."
-      );
+      console.error("Registration error:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -106,6 +108,7 @@ const RegisterForm = () => {
             placeholder="Enter your full name"
             value={formData.name}
             onChange={handleChange}
+            disabled={isLoading}
           />
         </div>
 
@@ -124,6 +127,7 @@ const RegisterForm = () => {
             placeholder="Enter your mobile number"
             value={formData.mobile}
             onChange={handleChange}
+            disabled={isLoading}
           />
         </div>
 
@@ -142,6 +146,7 @@ const RegisterForm = () => {
             placeholder="Enter your email"
             value={formData.email}
             onChange={handleChange}
+            disabled={isLoading}
           />
         </div>
 
@@ -160,6 +165,7 @@ const RegisterForm = () => {
             placeholder="Enter your NID number"
             value={formData.nid}
             onChange={handleChange}
+            disabled={isLoading}
           />
         </div>
 
@@ -179,6 +185,7 @@ const RegisterForm = () => {
             maxLength={5}
             value={formData.pin}
             onChange={handleChange}
+            disabled={isLoading}
           />
         </div>
 
@@ -198,6 +205,7 @@ const RegisterForm = () => {
             maxLength={5}
             value={formData.confirmPin}
             onChange={handleChange}
+            disabled={isLoading}
           />
         </div>
 
@@ -214,6 +222,7 @@ const RegisterForm = () => {
             name="accountType"
             value={formData.accountType}
             onChange={handleChange}
+            disabled={isLoading}
           >
             <option value="user">User</option>
             <option value="agent">Agent</option>
@@ -222,10 +231,13 @@ const RegisterForm = () => {
 
         <div className="flex items-center justify-between mb-6">
           <button
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
+            className={`bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full ${
+              isLoading ? "opacity-70 cursor-not-allowed" : ""
+            }`}
             type="submit"
+            disabled={isLoading}
           >
-            Register
+            {isLoading ? "Registering..." : "Register"}
           </button>
         </div>
 

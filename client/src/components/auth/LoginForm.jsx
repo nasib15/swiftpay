@@ -1,15 +1,17 @@
-import axios from "axios";
-import { useState } from "react";
+import { useContext, useState } from "react";
 import toast from "react-hot-toast";
 import { Link, useNavigate } from "react-router";
+import { AuthContext } from "../../contexts/AuthContext";
 
 const LoginForm = () => {
   const [formData, setFormData] = useState({
     identifier: "",
     pin: "",
   });
+  const [isLoading, setIsLoading] = useState(false);
 
   const navigate = useNavigate();
+  const { login } = useContext(AuthContext);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -21,28 +23,26 @@ const LoginForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
 
     // Empty validation
     if (!formData.identifier.trim() || !formData.pin.trim()) {
       toast.error("All fields are required");
+      setIsLoading(false);
       return;
     }
 
     try {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/auth/login`,
-        formData
-      );
+      const result = await login(formData);
 
-      console.log(response.data);
-
-      if (response.data.success) {
-        navigate(`/${response.data.user.accountType}`);
-      } else {
-        toast.error(response.data.message || "Login failed");
+      if (result.success) {
+        // Navigate based on account type
+        navigate(`/${result.user.accountType}`);
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || "Login failed");
+      console.error("Login error:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -64,6 +64,7 @@ const LoginForm = () => {
             placeholder="Enter mobile number or email"
             value={formData.identifier}
             onChange={handleChange}
+            disabled={isLoading}
           />
         </div>
 
@@ -83,15 +84,19 @@ const LoginForm = () => {
             maxLength={5}
             value={formData.pin}
             onChange={handleChange}
+            disabled={isLoading}
           />
         </div>
 
         <div className="flex items-center justify-between mb-6">
           <button
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
+            className={`bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full ${
+              isLoading ? "opacity-70 cursor-not-allowed" : ""
+            }`}
             type="submit"
+            disabled={isLoading}
           >
-            Login
+            {isLoading ? "Logging in..." : "Login"}
           </button>
         </div>
 
