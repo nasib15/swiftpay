@@ -1,57 +1,66 @@
-import { useState } from "react";
+import axios from "axios";
+import { useContext, useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import { Link } from "react-router";
 import DashboardCard from "../../components/DashboardCard";
 import TransactionHistory from "../../components/TransactionHistory";
+import { AuthContext } from "../../contexts/AuthContext";
 
 const AgentDashboard = () => {
-  // Balance
-  const [balance] = useState(98500);
-  // Income
-  const [income] = useState(1500);
+  const { user } = useContext(AuthContext);
+  const [stats, setStats] = useState({
+    balance: 0,
+    income: 0,
+  });
+  const [recentTransactions, setRecentTransactions] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Recent transactions
-  const [recentTransactions] = useState([
-    {
-      id: "TRX123456",
-      type: "cash-in",
-      amount: 500,
-      date: "2023-06-15T10:30:00",
-      status: "completed",
-      to: "User: 01712345678",
-    },
-    {
-      id: "TRX123458",
-      type: "cash-out",
-      amount: 1000,
-      date: "2023-06-12T16:45:00",
-      status: "completed",
-      from: "User: 01612345678",
-    },
-    {
-      id: "TRX123460",
-      type: "cash-in",
-      amount: 300,
-      date: "2023-06-08T11:30:00",
-      status: "completed",
-      to: "User: 01712345678",
-    },
-    {
-      id: "TRX123461",
-      type: "cash-out",
-      amount: 500,
-      date: "2023-06-05T15:20:00",
-      status: "completed",
-      from: "User: 01612345678",
-    },
-    {
-      id: "TRX123465",
-      type: "balance-request",
-      amount: 100000,
-      date: "2023-06-01T09:15:00",
-      status: "completed",
-      from: "Admin",
-    },
-  ]);
+  // Fetch agent stats and transactions
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch agent stats
+        const statsResponse = await axios.get(
+          `${import.meta.env.VITE_API_URL}/api/agent/stats`
+        );
+        setStats(statsResponse.data.data);
+
+        // Fetch agent's transactions
+        const transactionsResponse = await axios.get(
+          `${import.meta.env.VITE_API_URL}/api/transactions/${user?._id}`
+        );
+        setRecentTransactions(transactionsResponse.data.transactions);
+      } catch (error) {
+        toast.error("Failed to fetch dashboard data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user?._id]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  // Calculate transaction summaries
+  const cashInTransactions = recentTransactions.filter(
+    (t) => t.transactionType === "cash-in"
+  );
+  const cashOutTransactions = recentTransactions.filter(
+    (t) => t.transactionType === "cash-out"
+  );
+
+  const cashInTotal = cashInTransactions.reduce((sum, t) => sum + t.amount, 0);
+  const cashOutTotal = cashOutTransactions.reduce(
+    (sum, t) => sum + t.amount,
+    0
+  );
 
   return (
     <div>
@@ -60,17 +69,17 @@ const AgentDashboard = () => {
           Agent Dashboard
         </h1>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <DashboardCard
             title="Current Balance"
-            value={`${balance} Tk`}
+            value={`${stats.balance.toLocaleString()} Tk`}
             isBlurred={true}
             color="blue"
           />
 
           <DashboardCard
             title="Total Income"
-            value={`${income} Tk`}
+            value={`${stats.income.toLocaleString()} Tk`}
             isBlurred={true}
             color="green"
           />
@@ -80,6 +89,14 @@ const AgentDashboard = () => {
               title="Balance Request"
               value="Request Funds"
               color="purple"
+            />
+          </Link>
+
+          <Link to="/agent/withdraw-request" className="block">
+            <DashboardCard
+              title="Withdraw Income"
+              value="Request Withdrawal"
+              color="orange"
             />
           </Link>
         </div>
@@ -137,6 +154,29 @@ const AgentDashboard = () => {
           </Link>
 
           <Link
+            to="/agent/withdraw-request"
+            className="bg-white p-4 rounded-lg shadow text-center hover:shadow-md transition-shadow"
+          >
+            <div className="text-orange-500 text-3xl mb-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-10 w-10 mx-auto"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                />
+              </svg>
+            </div>
+            <span className="text-gray-700 font-medium">Withdraw Income</span>
+          </Link>
+
+          <Link
             to="/agent/transactions"
             className="bg-white p-4 rounded-lg shadow text-center hover:shadow-md transition-shadow"
           >
@@ -158,26 +198,6 @@ const AgentDashboard = () => {
             </div>
             <span className="text-gray-700 font-medium">Transactions</span>
           </Link>
-
-          <div className="bg-white p-4 rounded-lg shadow text-center hover:shadow-md transition-shadow cursor-pointer">
-            <div className="text-red-500 text-3xl mb-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-10 w-10 mx-auto"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <span className="text-gray-700 font-medium">Help & Support</span>
-          </div>
         </div>
       </div>
 
@@ -190,13 +210,10 @@ const AgentDashboard = () => {
             <h3 className="font-medium text-gray-700 mb-2">Cash In</h3>
             <div className="flex justify-between items-center">
               <span className="text-2xl font-bold text-green-600">
-                {recentTransactions.filter((t) => t.type === "cash-in").length}
+                {cashInTransactions.length}
               </span>
               <span className="text-green-600 text-sm font-medium">
-                {recentTransactions
-                  .filter((t) => t.type === "cash-in")
-                  .reduce((sum, t) => sum + t.amount, 0)}{" "}
-                Tk
+                {cashInTotal.toLocaleString()} Tk
               </span>
             </div>
           </div>
@@ -205,39 +222,46 @@ const AgentDashboard = () => {
             <h3 className="font-medium text-gray-700 mb-2">Cash Out</h3>
             <div className="flex justify-between items-center">
               <span className="text-2xl font-bold text-orange-600">
-                {recentTransactions.filter((t) => t.type === "cash-out").length}
+                {cashOutTransactions.length}
               </span>
               <span className="text-orange-600 text-sm font-medium">
-                {recentTransactions
-                  .filter((t) => t.type === "cash-out")
-                  .reduce((sum, t) => sum + t.amount, 0)}{" "}
-                Tk
+                {cashOutTotal.toLocaleString()} Tk
               </span>
             </div>
           </div>
 
           <div className="bg-white p-4 rounded-lg shadow">
-            <h3 className="font-medium text-gray-700 mb-2">Balance Requests</h3>
+            <h3 className="font-medium text-gray-700 mb-2">Income Summary</h3>
             <div className="flex justify-between items-center">
               <span className="text-2xl font-bold text-purple-600">
-                {
-                  recentTransactions.filter((t) => t.type === "balance-request")
-                    .length
-                }
+                {stats.income.toLocaleString()} Tk
               </span>
-              <span className="text-purple-600 text-sm font-medium">
-                {recentTransactions
-                  .filter((t) => t.type === "balance-request")
-                  .reduce((sum, t) => sum + t.amount, 0)}{" "}
-                Tk
-              </span>
+              <Link
+                to="/agent/withdraw-request"
+                className="text-purple-600 text-sm font-medium hover:text-purple-800"
+              >
+                Withdraw →
+              </Link>
             </div>
           </div>
         </div>
       </div>
 
       <div>
-        <TransactionHistory transactions={recentTransactions} />
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">
+          Recent Transactions
+        </h2>
+        <TransactionHistory transactions={recentTransactions.slice(0, 5)} />
+        {recentTransactions.length > 5 && (
+          <div className="mt-4 text-center">
+            <Link
+              to="/agent/transactions"
+              className="text-blue-600 hover:text-blue-800 font-medium"
+            >
+              View All Transactions →
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

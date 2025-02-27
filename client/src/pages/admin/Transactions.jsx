@@ -1,83 +1,10 @@
+import axios from "axios";
 import { useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import TransactionHistory from "../../components/TransactionHistory";
 
 const Transactions = () => {
-  // Transactions
-  const [transactions, setTransactions] = useState([
-    {
-      id: "TRX123456",
-      type: "cash-in",
-      amount: 500,
-      date: "2023-06-15T10:30:00",
-      status: "completed",
-      from: "Agent: 01712345678",
-      to: "User: 01812345678",
-    },
-    {
-      id: "TRX123457",
-      type: "send-money",
-      amount: 200,
-      date: "2023-06-14T14:20:00",
-      status: "completed",
-      from: "User: 01712345678",
-      to: "User: 01812345678",
-    },
-    {
-      id: "TRX123458",
-      type: "cash-out",
-      amount: 1000,
-      date: "2023-06-12T16:45:00",
-      status: "completed",
-      from: "User: 01612345678",
-      to: "Agent: 01712345678",
-    },
-    {
-      id: "TRX123459",
-      type: "send-money",
-      amount: 150,
-      date: "2023-06-10T09:15:00",
-      status: "completed",
-      from: "User: 01712345678",
-      to: "User: 01912345678",
-    },
-    {
-      id: "TRX123460",
-      type: "cash-in",
-      amount: 300,
-      date: "2023-06-08T11:30:00",
-      status: "completed",
-      from: "Agent: 01712345678",
-      to: "User: 01812345678",
-    },
-    {
-      id: "TRX123461",
-      type: "cash-out",
-      amount: 500,
-      date: "2023-06-05T15:20:00",
-      status: "completed",
-      from: "User: 01612345678",
-      to: "Agent: 01712345678",
-    },
-    {
-      id: "TRX123462",
-      type: "send-money",
-      amount: 100,
-      date: "2023-06-03T13:10:00",
-      status: "completed",
-      from: "User: 01712345678",
-      to: "User: 01812345678",
-    },
-    {
-      id: "TRX123465",
-      type: "balance-request",
-      amount: 100000,
-      date: "2023-06-01T09:15:00",
-      status: "completed",
-      from: "Admin",
-      to: "Agent: 01712345678",
-    },
-  ]);
-
+  const [transactions, setTransactions] = useState([]);
   const [filter, setFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [dateRange, setDateRange] = useState({
@@ -85,38 +12,41 @@ const Transactions = () => {
     end: "",
   });
   const [userFilter, setUserFilter] = useState("");
-  const [filteredTransactions, setFilteredTransactions] =
-    useState(transactions);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Apply filters when filter, searchTerm, dateRange, or userFilter changes
+  // Fetch transactions
   useEffect(() => {
-    let filtered = transactions;
+    const fetchTransactions = async () => {
+      try {
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/api/transactions`
+        );
+        setTransactions(response.data.transactions);
+      } catch (error) {
+        toast.error("Failed to fetch transactions");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTransactions();
+  }, []);
+
+  // Filter transactions
+  const getFilteredTransactions = () => {
+    let filtered = [...transactions];
 
     // Apply type filter
     if (filter !== "all") {
-      filtered = filtered.filter((transaction) => transaction.type === filter);
+      filtered = filtered.filter(
+        (transaction) => transaction.transactionType === filter
+      );
     }
 
     // Apply search filter
     if (searchTerm) {
       filtered = filtered.filter((transaction) =>
-        transaction.id.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-
-    // Apply date range filter
-    if (dateRange.start) {
-      const startDate = new Date(dateRange.start);
-      filtered = filtered.filter(
-        (transaction) => new Date(transaction.date) >= startDate
-      );
-    }
-
-    if (dateRange.end) {
-      const endDate = new Date(dateRange.end);
-      endDate.setHours(23, 59, 59, 999); // End of the day
-      filtered = filtered.filter(
-        (transaction) => new Date(transaction.date) <= endDate
+        transaction.reference.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -124,40 +54,80 @@ const Transactions = () => {
     if (userFilter) {
       filtered = filtered.filter(
         (transaction) =>
-          (transaction.from &&
-            transaction.from
+          (transaction.sender?.mobile &&
+            transaction.sender.mobile
               .toLowerCase()
               .includes(userFilter.toLowerCase())) ||
-          (transaction.to &&
-            transaction.to.toLowerCase().includes(userFilter.toLowerCase()))
+          (transaction.receiver?.mobile &&
+            transaction.receiver.mobile
+              .toLowerCase()
+              .includes(userFilter.toLowerCase()))
       );
     }
 
-    setFilteredTransactions(filtered);
-  }, [filter, searchTerm, dateRange, userFilter, transactions]);
+    // Apply date range filter
+    if (dateRange.start) {
+      const startDate = new Date(dateRange.start);
+      filtered = filtered.filter(
+        (transaction) => new Date(transaction.createdAt) >= startDate
+      );
+    }
 
-  const handleDateRangeChange = (e) => {
-    const { name, value } = e.target;
-    setDateRange({
-      ...dateRange,
-      [name]: value,
-    });
+    if (dateRange.end) {
+      const endDate = new Date(dateRange.end);
+      endDate.setHours(23, 59, 59, 999); // End of the day
+      filtered = filtered.filter(
+        (transaction) => new Date(transaction.createdAt) <= endDate
+      );
+    }
+
+    return filtered;
   };
 
-  // Calculate total admin income
+  const filteredTransactions = getFilteredTransactions();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  // Calculate admin income
   const calculateAdminIncome = () => {
     let income = 0;
 
     filteredTransactions.forEach((transaction) => {
-      if (transaction.type === "send-money" && transaction.amount > 100) {
+      if (
+        transaction.transactionType === "send-money" &&
+        transaction.amount > 100
+      ) {
         income += 5; // 5 Tk for send-money over 100 Tk
-      } else if (transaction.type === "cash-out") {
+      } else if (transaction.transactionType === "cash-out") {
         income += transaction.amount * 0.005; // 0.5% for cash-out
       }
     });
 
-    return income.toFixed(2);
+    return income;
   };
+
+  // Calculate transaction summaries
+  const sendMoneyTransactions = filteredTransactions.filter(
+    (t) => t.transactionType === "send-money"
+  );
+  const cashInTransactions = filteredTransactions.filter(
+    (t) => t.transactionType === "cash-in"
+  );
+  const cashOutTransactions = filteredTransactions.filter(
+    (t) => t.transactionType === "cash-out"
+  );
+  const balanceRequests = filteredTransactions.filter(
+    (t) => t.transactionType === "balance-request"
+  );
+  const withdrawalRequests = filteredTransactions.filter(
+    (t) => t.transactionType === "withdrawal-request"
+  );
 
   return (
     <div>
@@ -185,6 +155,7 @@ const Transactions = () => {
               <option value="cash-in">Cash In</option>
               <option value="cash-out">Cash Out</option>
               <option value="balance-request">Balance Request</option>
+              <option value="withdrawal-request">Withdrawal Request</option>
             </select>
           </div>
 
@@ -236,7 +207,9 @@ const Transactions = () => {
                 name="start"
                 type="date"
                 value={dateRange.start}
-                onChange={handleDateRangeChange}
+                onChange={(e) =>
+                  setDateRange({ ...dateRange, start: e.target.value })
+                }
               />
             </div>
 
@@ -253,20 +226,22 @@ const Transactions = () => {
                 name="end"
                 type="date"
                 value={dateRange.end}
-                onChange={handleDateRangeChange}
+                onChange={(e) =>
+                  setDateRange({ ...dateRange, end: e.target.value })
+                }
               />
             </div>
           </div>
         </div>
 
         <div className="bg-blue-50 p-4 rounded-lg mb-6">
-          <div className="flex flex-wrap gap-4">
-            <div className="bg-white p-3 rounded shadow-sm flex-1 min-w-[150px]">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-3 rounded shadow-sm">
               <p className="text-sm text-gray-500">Total Transactions</p>
               <p className="text-xl font-bold">{filteredTransactions.length}</p>
             </div>
 
-            <div className="bg-white p-3 rounded shadow-sm flex-1 min-w-[150px]">
+            <div className="bg-white p-3 rounded shadow-sm">
               <p className="text-sm text-gray-500">Total Amount</p>
               <p className="text-xl font-bold text-blue-600">
                 {filteredTransactions
@@ -276,37 +251,40 @@ const Transactions = () => {
               </p>
             </div>
 
-            <div className="bg-white p-3 rounded shadow-sm flex-1 min-w-[150px]">
+            <div className="bg-white p-3 rounded shadow-sm">
               <p className="text-sm text-gray-500">Admin Income</p>
               <p className="text-xl font-bold text-green-600">
-                {calculateAdminIncome()} Tk
+                {calculateAdminIncome().toLocaleString()} Tk
               </p>
             </div>
 
-            <div className="bg-white p-3 rounded shadow-sm flex-1 min-w-[150px]">
+            <div className="bg-white p-3 rounded shadow-sm">
               <p className="text-sm text-gray-500">Transaction Types</p>
-              <div className="flex justify-between text-sm">
-                <span className="text-blue-600">
-                  {
-                    filteredTransactions.filter((t) => t.type === "send-money")
-                      .length
-                  }{" "}
-                  Send
-                </span>
-                <span className="text-green-600">
-                  {
-                    filteredTransactions.filter((t) => t.type === "cash-in")
-                      .length
-                  }{" "}
-                  In
-                </span>
-                <span className="text-orange-600">
-                  {
-                    filteredTransactions.filter((t) => t.type === "cash-out")
-                      .length
-                  }{" "}
-                  Out
-                </span>
+              <div className="grid grid-cols-3 gap-2 text-sm mt-1">
+                <div>
+                  <p className="text-blue-600 font-medium">Send Money</p>
+                  <p className="text-blue-600">
+                    {sendMoneyTransactions.length}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-green-600 font-medium">Cash In</p>
+                  <p className="text-green-600">{cashInTransactions.length}</p>
+                </div>
+                <div>
+                  <p className="text-orange-600 font-medium">Cash Out</p>
+                  <p className="text-orange-600">
+                    {cashOutTransactions.length}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-purple-600 font-medium">Balance</p>
+                  <p className="text-purple-600">{balanceRequests.length}</p>
+                </div>
+                <div>
+                  <p className="text-red-600 font-medium">Withdraw</p>
+                  <p className="text-red-600">{withdrawalRequests.length}</p>
+                </div>
               </div>
             </div>
           </div>

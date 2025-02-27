@@ -1,95 +1,90 @@
-import { useEffect, useState } from "react";
+import axios from "axios";
+import { useContext, useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import TransactionHistory from "../../components/TransactionHistory";
+import { AuthContext } from "../../contexts/AuthContext";
 
 const Transactions = () => {
-  // Transactions
-  const [transactions, setTransactions] = useState([
-    {
-      id: "TRX123456",
-      type: "cash-in",
-      amount: 500,
-      date: "2023-06-15T10:30:00",
-      status: "completed",
-      from: "Agent: 01712345678",
-    },
-    {
-      id: "TRX123457",
-      type: "send-money",
-      amount: 200,
-      date: "2023-06-14T14:20:00",
-      status: "completed",
-      to: "User: 01812345678",
-    },
-    {
-      id: "TRX123458",
-      type: "cash-out",
-      amount: 1000,
-      date: "2023-06-12T16:45:00",
-      status: "completed",
-      to: "Agent: 01612345678",
-    },
-    {
-      id: "TRX123459",
-      type: "send-money",
-      amount: 150,
-      date: "2023-06-10T09:15:00",
-      status: "completed",
-      to: "User: 01912345678",
-    },
-    {
-      id: "TRX123460",
-      type: "cash-in",
-      amount: 300,
-      date: "2023-06-08T11:30:00",
-      status: "completed",
-      from: "Agent: 01712345678",
-    },
-    {
-      id: "TRX123461",
-      type: "cash-out",
-      amount: 500,
-      date: "2023-06-05T15:20:00",
-      status: "completed",
-      to: "Agent: 01612345678",
-    },
-    {
-      id: "TRX123462",
-      type: "send-money",
-      amount: 100,
-      date: "2023-06-03T13:10:00",
-      status: "completed",
-      to: "User: 01812345678",
-    },
-  ]);
-
+  const [transactions, setTransactions] = useState([]);
   const [filter, setFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [filteredTransactions, setFilteredTransactions] =
-    useState(transactions);
+  const [dateRange, setDateRange] = useState({
+    start: "",
+    end: "",
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useContext(AuthContext);
 
-  // Apply filters when filter or searchTerm changes
   useEffect(() => {
-    let filtered = transactions;
+    const fetchTransactions = async () => {
+      try {
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/api/transactions/${user?._id}`
+        );
+        setTransactions(response.data.transactions);
+      } catch {
+        toast.error("Failed to fetch transactions");
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    // Apply type filter
+    fetchTransactions();
+  }, [user?._id]);
+
+  const getFilteredTransactions = () => {
+    let filtered = [...transactions];
+
     if (filter !== "all") {
-      filtered = filtered.filter((transaction) => transaction.type === filter);
-    }
-
-    // Apply search filter
-    if (searchTerm) {
       filtered = filtered.filter(
-        (transaction) =>
-          transaction.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (transaction.to &&
-            transaction.to.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (transaction.from &&
-            transaction.from.toLowerCase().includes(searchTerm.toLowerCase()))
+        (transaction) => transaction.transactionType === filter
       );
     }
 
-    setFilteredTransactions(filtered);
-  }, [filter, searchTerm, transactions]);
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (transaction) =>
+          transaction.reference
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          (transaction.sender?.name &&
+            transaction.sender.name
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase())) ||
+          (transaction.receiver?.name &&
+            transaction.receiver.name
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase()))
+      );
+    }
+
+    if (dateRange.start) {
+      const startDate = new Date(dateRange.start);
+      filtered = filtered.filter(
+        (transaction) => new Date(transaction.createdAt) >= startDate
+      );
+    }
+
+    if (dateRange.end) {
+      const endDate = new Date(dateRange.end);
+      endDate.setHours(23, 59, 59, 999);
+      filtered = filtered.filter(
+        (transaction) => new Date(transaction.createdAt) <= endDate
+      );
+    }
+
+    return filtered;
+  };
+
+  const filteredTransactions = getFilteredTransactions();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -98,8 +93,8 @@ const Transactions = () => {
       </h1>
 
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-          <div className="mb-4 md:mb-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div>
             <label
               className="block text-gray-700 text-sm font-bold mb-2"
               htmlFor="filter"
@@ -107,7 +102,7 @@ const Transactions = () => {
               Filter by Type
             </label>
             <select
-              className="shadow border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              className="shadow border rounded py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-full"
               id="filter"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
@@ -135,34 +130,91 @@ const Transactions = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+
+          <div>
+            <label
+              className="block text-gray-700 text-sm font-bold mb-2"
+              htmlFor="startDate"
+            >
+              Start Date
+            </label>
+            <input
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="startDate"
+              name="start"
+              type="date"
+              value={dateRange.start}
+              onChange={(e) =>
+                setDateRange({ ...dateRange, start: e.target.value })
+              }
+            />
+          </div>
+
+          <div>
+            <label
+              className="block text-gray-700 text-sm font-bold mb-2"
+              htmlFor="endDate"
+            >
+              End Date
+            </label>
+            <input
+              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              id="endDate"
+              name="end"
+              type="date"
+              value={dateRange.end}
+              onChange={(e) =>
+                setDateRange({ ...dateRange, end: e.target.value })
+              }
+            />
+          </div>
         </div>
 
         <div className="bg-blue-50 p-4 rounded-lg mb-6">
           <div className="flex flex-wrap gap-4">
             <div className="bg-white p-3 rounded shadow-sm flex-1 min-w-[150px]">
               <p className="text-sm text-gray-500">Total Transactions</p>
-              <p className="text-xl font-bold">{transactions.length}</p>
+              <p className="text-xl font-bold">{filteredTransactions.length}</p>
             </div>
 
             <div className="bg-white p-3 rounded shadow-sm flex-1 min-w-[150px]">
-              <p className="text-sm text-gray-500">Send Money</p>
+              <p className="text-sm text-gray-500">Total Amount</p>
               <p className="text-xl font-bold text-blue-600">
-                {transactions.filter((t) => t.type === "send-money").length}
+                {filteredTransactions
+                  .reduce((sum, t) => sum + t.amount, 0)
+                  .toLocaleString()}{" "}
+                Tk
               </p>
             </div>
 
             <div className="bg-white p-3 rounded shadow-sm flex-1 min-w-[150px]">
-              <p className="text-sm text-gray-500">Cash In</p>
-              <p className="text-xl font-bold text-green-600">
-                {transactions.filter((t) => t.type === "cash-in").length}
-              </p>
-            </div>
-
-            <div className="bg-white p-3 rounded shadow-sm flex-1 min-w-[150px]">
-              <p className="text-sm text-gray-500">Cash Out</p>
-              <p className="text-xl font-bold text-orange-600">
-                {transactions.filter((t) => t.type === "cash-out").length}
-              </p>
+              <p className="text-sm text-gray-500">Transaction Types</p>
+              <div className="flex justify-between text-sm">
+                <span className="text-blue-600">
+                  {
+                    filteredTransactions.filter(
+                      (t) => t.transactionType === "send-money"
+                    ).length
+                  }{" "}
+                  Send
+                </span>
+                <span className="text-green-600">
+                  {
+                    filteredTransactions.filter(
+                      (t) => t.transactionType === "cash-in"
+                    ).length
+                  }{" "}
+                  In
+                </span>
+                <span className="text-orange-600">
+                  {
+                    filteredTransactions.filter(
+                      (t) => t.transactionType === "cash-out"
+                    ).length
+                  }{" "}
+                  Out
+                </span>
+              </div>
             </div>
           </div>
         </div>

@@ -1,44 +1,29 @@
 /* eslint-disable react/prop-types */
 
+const typeColors = {
+  "send-money": "bg-blue-100 text-blue-800",
+  "cash-out": "bg-red-100 text-red-800",
+  "cash-in": "bg-green-100 text-green-800",
+  "balance-request": "bg-purple-100 text-purple-800",
+  "withdrawal-request": "bg-orange-100 text-orange-800",
+};
+
+const formatAmount = (amount, type) => {
+  const sign = ["cash-in", "balance-request"].includes(type) ? "+" : "-";
+  return `${sign}${amount}`;
+};
+
+const formatDate = (dateString) => {
+  return new Date(dateString).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
 const TransactionHistory = ({ transactions = [] }) => {
-  // Transaction type badge color
-  const getTypeColor = (type) => {
-    switch (type) {
-      case "send-money":
-        return "bg-blue-100 text-blue-800";
-      case "cash-out":
-        return "bg-red-100 text-red-800";
-      case "cash-in":
-        return "bg-green-100 text-green-800";
-      case "balance-request":
-        return "bg-purple-100 text-purple-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  // Amount with sign
-  const formatAmount = (amount, type) => {
-    if (type === "cash-in" || type === "balance-request") {
-      return `+${amount}`;
-    } else if (type === "cash-out" || type === "send-money") {
-      return `-${amount}`;
-    }
-    return amount;
-  };
-
-  // Date format
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
       <div className="px-4 py-5 sm:px-6 bg-gray-50 border-b">
@@ -59,65 +44,58 @@ const TransactionHistory = ({ transactions = [] }) => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Transaction ID
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Type
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Amount
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Date
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {transactions.map((transaction) => (
-                <tr key={transaction.id} className="hover:bg-gray-50">
+                <tr key={transaction._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {transaction.id}
+                    {transaction.reference}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <span
-                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getTypeColor(
-                        transaction.type
-                      )}`}
+                      className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        typeColors[transaction.transactionType] ||
+                        "bg-gray-100 text-gray-800"
+                      }`}
                     >
-                      {transaction.type.replace("-", " ").toUpperCase()}
+                      {transaction.transactionType
+                        .replace("-", " ")
+                        .toUpperCase()}
                     </span>
                   </td>
                   <td
                     className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
-                      transaction.type === "cash-in" ||
-                      transaction.type === "balance-request"
+                      ["cash-in", "balance-request"].includes(
+                        transaction.transactionType
+                      )
                         ? "text-green-600"
                         : "text-red-600"
                     }`}
                   >
-                    {formatAmount(transaction.amount, transaction.type)} Tk
+                    {formatAmount(
+                      transaction.amount,
+                      transaction.transactionType
+                    )}{" "}
+                    Tk
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDate(transaction.date)}
+                    {formatDate(transaction.createdAt)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <span

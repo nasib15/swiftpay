@@ -42,10 +42,16 @@ const userSchema = new mongoose.Schema({
   },
   balance: {
     type: Number,
+    default: 0,
+  },
+  income: {
+    type: Number,
+    default: 0,
   },
   status: {
     type: String,
     enum: ["active", "blocked", "pending"],
+    default: "active",
   },
   createdAt: {
     type: Date,

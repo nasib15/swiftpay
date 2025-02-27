@@ -21,12 +21,15 @@ import BalanceRequest from "./pages/agent/BalanceRequest";
 import CashIn from "./pages/agent/CashIn";
 import AgentDashboard from "./pages/agent/Dashboard";
 import AgentTransactions from "./pages/agent/Transactions";
+import WithdrawRequest from "./pages/agent/WithdrawRequest";
 
 // Admin
 import AgentApproval from "./pages/admin/AgentApproval";
+import BalanceRequests from "./pages/admin/BalanceRequests";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminTransactions from "./pages/admin/Transactions";
 import UserManagement from "./pages/admin/UserManagement";
+import WithdrawalApprovals from "./pages/admin/WithdrawalApprovals";
 
 function App() {
   return (
@@ -55,6 +58,7 @@ function App() {
             <Route index element={<AgentDashboard />} />
             <Route path="cash-in" element={<CashIn />} />
             <Route path="balance-request" element={<BalanceRequest />} />
+            <Route path="withdraw-request" element={<WithdrawRequest />} />
             <Route path="transactions" element={<AgentTransactions />} />
           </Route>
 
@@ -63,6 +67,11 @@ function App() {
             <Route index element={<AdminDashboard />} />
             <Route path="user-management" element={<UserManagement />} />
             <Route path="agent-approval" element={<AgentApproval />} />
+            <Route path="balance-requests" element={<BalanceRequests />} />
+            <Route
+              path="withdrawal-approvals"
+              element={<WithdrawalApprovals />}
+            />
             <Route path="transactions" element={<AdminTransactions />} />
           </Route>
         </Routes>

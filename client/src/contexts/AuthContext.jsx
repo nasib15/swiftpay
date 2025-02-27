@@ -29,6 +29,7 @@ export const AuthProvider = ({ children }) => {
           );
           setUser(res.data.user);
         } catch (error) {
+          console.error("Error loading user:", error);
           localStorage.removeItem("token");
           setToken(null);
           setUser(null);

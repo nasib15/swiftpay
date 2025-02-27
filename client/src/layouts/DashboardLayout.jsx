@@ -17,6 +17,7 @@ const agentNavigation = [
   { name: "Dashboard", path: "/agent" },
   { name: "Cash In", path: "/agent/cash-in" },
   { name: "Balance Request", path: "/agent/balance-request" },
+  { name: "Withdraw Request", path: "/agent/withdraw-request" },
   { name: "Transactions", path: "/agent/transactions" },
 ];
 
@@ -25,6 +26,8 @@ const adminNavigation = [
   { name: "Dashboard", path: "/admin" },
   { name: "User Management", path: "/admin/user-management" },
   { name: "Agent Approval", path: "/admin/agent-approval" },
+  { name: "Balance Requests", path: "/admin/balance-requests" },
+  { name: "Withdrawal Approvals", path: "/admin/withdrawal-approvals" },
   { name: "Transactions", path: "/admin/transactions" },
 ];
 
@@ -231,8 +234,8 @@ const DashboardLayout = ({ userType }) => {
                   <span className="sr-only">Open user menu</span>
                   <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white">
                     {user && user.name
-                      ? user.name.charAt(0)
-                      : userTypeDisplay.charAt(0)}
+                      ? user.name.charAt(0).toUpperCase()
+                      : userTypeDisplay.charAt(0).toUpperCase()}
                   </div>
                 </button>
               </div>

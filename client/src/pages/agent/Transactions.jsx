@@ -1,123 +1,103 @@
-import { useEffect, useState } from "react";
+import axios from "axios";
+import { useContext, useEffect, useState } from "react";
+import toast from "react-hot-toast";
 import TransactionHistory from "../../components/TransactionHistory";
+import { AuthContext } from "../../contexts/AuthContext";
 
 const Transactions = () => {
-  // Mock transactions for demonstration
-  const [transactions, setTransactions] = useState([
-    {
-      id: "TRX123456",
-      type: "cash-in",
-      amount: 500,
-      date: "2023-06-15T10:30:00",
-      status: "completed",
-      to: "User: 01712345678",
-    },
-    {
-      id: "TRX123458",
-      type: "cash-out",
-      amount: 1000,
-      date: "2023-06-12T16:45:00",
-      status: "completed",
-      from: "User: 01612345678",
-    },
-    {
-      id: "TRX123460",
-      type: "cash-in",
-      amount: 300,
-      date: "2023-06-08T11:30:00",
-      status: "completed",
-      to: "User: 01712345678",
-    },
-    {
-      id: "TRX123461",
-      type: "cash-out",
-      amount: 500,
-      date: "2023-06-05T15:20:00",
-      status: "completed",
-      from: "User: 01612345678",
-    },
-    {
-      id: "TRX123465",
-      type: "balance-request",
-      amount: 100000,
-      date: "2023-06-01T09:15:00",
-      status: "completed",
-      from: "Admin",
-    },
-    {
-      id: "TRX123470",
-      type: "cash-in",
-      amount: 1000,
-      date: "2023-05-28T14:20:00",
-      status: "completed",
-      to: "User: 01812345678",
-    },
-    {
-      id: "TRX123475",
-      type: "cash-out",
-      amount: 2000,
-      date: "2023-05-25T11:10:00",
-      status: "completed",
-      from: "User: 01912345678",
-    },
-  ]);
-
+  const [transactions, setTransactions] = useState([]);
   const [filter, setFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [dateRange, setDateRange] = useState({
     start: "",
     end: "",
   });
-  const [filteredTransactions, setFilteredTransactions] =
-    useState(transactions);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useContext(AuthContext);
 
-  // Apply filters when filter, searchTerm, or dateRange changes
   useEffect(() => {
-    let filtered = transactions;
+    const fetchTransactions = async () => {
+      try {
+        const response = await axios.get(
+          `${import.meta.env.VITE_API_URL}/api/transactions/${user?._id}`
+        );
+        setTransactions(response.data.transactions);
+      } catch {
+        toast.error("Failed to fetch transactions");
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    // Apply type filter
+    fetchTransactions();
+  }, [user?._id]);
+
+  const getFilteredTransactions = () => {
+    let filtered = [...transactions];
+
     if (filter !== "all") {
-      filtered = filtered.filter((transaction) => transaction.type === filter);
-    }
-
-    // Apply search filter
-    if (searchTerm) {
       filtered = filtered.filter(
-        (transaction) =>
-          transaction.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (transaction.to &&
-            transaction.to.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (transaction.from &&
-            transaction.from.toLowerCase().includes(searchTerm.toLowerCase()))
+        (transaction) => transaction.transactionType === filter
       );
     }
 
-    // Apply date range filter
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (transaction) =>
+          transaction.reference
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          (transaction.sender?.name &&
+            transaction.sender.name
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase())) ||
+          (transaction.receiver?.name &&
+            transaction.receiver.name
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase()))
+      );
+    }
+
     if (dateRange.start) {
       const startDate = new Date(dateRange.start);
       filtered = filtered.filter(
-        (transaction) => new Date(transaction.date) >= startDate
+        (transaction) => new Date(transaction.createdAt) >= startDate
       );
     }
 
     if (dateRange.end) {
       const endDate = new Date(dateRange.end);
-      endDate.setHours(23, 59, 59, 999); // End of the day
+      endDate.setHours(23, 59, 59, 999);
       filtered = filtered.filter(
-        (transaction) => new Date(transaction.date) <= endDate
+        (transaction) => new Date(transaction.createdAt) <= endDate
       );
     }
 
-    setFilteredTransactions(filtered);
-  }, [filter, searchTerm, dateRange, transactions]);
-
-  const handleDateRangeChange = (e) => {
-    const { name, value } = e.target;
-    setDateRange({
-      ...dateRange,
-      [name]: value,
-    });
+    return filtered;
   };
+
+  const filteredTransactions = getFilteredTransactions();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  const cashInTransactions = filteredTransactions.filter(
+    (t) => t.transactionType === "cash-in"
+  );
+  const cashOutTransactions = filteredTransactions.filter(
+    (t) => t.transactionType === "cash-out"
+  );
+  const balanceRequests = filteredTransactions.filter(
+    (t) => t.transactionType === "balance-request"
+  );
+  const withdrawalRequests = filteredTransactions.filter(
+    (t) => t.transactionType === "withdrawal-request"
+  );
 
   return (
     <div>
@@ -144,6 +124,7 @@ const Transactions = () => {
               <option value="cash-in">Cash In</option>
               <option value="cash-out">Cash Out</option>
               <option value="balance-request">Balance Request</option>
+              <option value="withdrawal-request">Withdrawal Request</option>
             </select>
           </div>
 
@@ -177,7 +158,9 @@ const Transactions = () => {
               name="start"
               type="date"
               value={dateRange.start}
-              onChange={handleDateRangeChange}
+              onChange={(e) =>
+                setDateRange({ ...dateRange, start: e.target.value })
+              }
             />
           </div>
 
@@ -194,47 +177,73 @@ const Transactions = () => {
               name="end"
               type="date"
               value={dateRange.end}
-              onChange={handleDateRangeChange}
+              onChange={(e) =>
+                setDateRange({ ...dateRange, end: e.target.value })
+              }
             />
           </div>
         </div>
 
         <div className="bg-blue-50 p-4 rounded-lg mb-6">
-          <div className="flex flex-wrap gap-4">
-            <div className="bg-white p-3 rounded shadow-sm flex-1 min-w-[150px]">
-              <p className="text-sm text-gray-500">Total Transactions</p>
-              <p className="text-xl font-bold">{filteredTransactions.length}</p>
-            </div>
-
-            <div className="bg-white p-3 rounded shadow-sm flex-1 min-w-[150px]">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-3 rounded shadow-sm">
               <p className="text-sm text-gray-500">Cash In</p>
-              <p className="text-xl font-bold text-green-600">
-                {
-                  filteredTransactions.filter((t) => t.type === "cash-in")
-                    .length
-                }
-              </p>
+              <div className="flex justify-between items-center">
+                <span className="text-xl font-bold text-green-600">
+                  {cashInTransactions.length}
+                </span>
+                <span className="text-green-600 text-sm font-medium">
+                  {cashInTransactions
+                    .reduce((sum, t) => sum + t.amount, 0)
+                    .toLocaleString()}{" "}
+                  Tk
+                </span>
+              </div>
             </div>
 
-            <div className="bg-white p-3 rounded shadow-sm flex-1 min-w-[150px]">
+            <div className="bg-white p-3 rounded shadow-sm">
               <p className="text-sm text-gray-500">Cash Out</p>
-              <p className="text-xl font-bold text-orange-600">
-                {
-                  filteredTransactions.filter((t) => t.type === "cash-out")
-                    .length
-                }
-              </p>
+              <div className="flex justify-between items-center">
+                <span className="text-xl font-bold text-orange-600">
+                  {cashOutTransactions.length}
+                </span>
+                <span className="text-orange-600 text-sm font-medium">
+                  {cashOutTransactions
+                    .reduce((sum, t) => sum + t.amount, 0)
+                    .toLocaleString()}{" "}
+                  Tk
+                </span>
+              </div>
             </div>
 
-            <div className="bg-white p-3 rounded shadow-sm flex-1 min-w-[150px]">
+            <div className="bg-white p-3 rounded shadow-sm">
               <p className="text-sm text-gray-500">Balance Requests</p>
-              <p className="text-xl font-bold text-purple-600">
-                {
-                  filteredTransactions.filter(
-                    (t) => t.type === "balance-request"
-                  ).length
-                }
-              </p>
+              <div className="flex justify-between items-center">
+                <span className="text-xl font-bold text-purple-600">
+                  {balanceRequests.length}
+                </span>
+                <span className="text-purple-600 text-sm font-medium">
+                  {balanceRequests
+                    .reduce((sum, t) => sum + t.amount, 0)
+                    .toLocaleString()}{" "}
+                  Tk
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white p-3 rounded shadow-sm">
+              <p className="text-sm text-gray-500">Withdrawals</p>
+              <div className="flex justify-between items-center">
+                <span className="text-xl font-bold text-blue-600">
+                  {withdrawalRequests.length}
+                </span>
+                <span className="text-blue-600 text-sm font-medium">
+                  {withdrawalRequests
+                    .reduce((sum, t) => sum + t.amount, 0)
+                    .toLocaleString()}{" "}
+                  Tk
+                </span>
+              </div>
             </div>
           </div>
         </div>
