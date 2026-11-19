@@ -762,7 +762,8 @@ async function run() {
         let query = { accountType: { $in: ["user", "agent"] } };
 
         if (search) {
-          query.mobile = new RegExp(search, "i");
+          const safeSearch = String(search).replace(/[^0-9]/g, "");
+          query.mobile = new RegExp(safeSearch, "i");
         }
 
         const users = await User.find(query)
